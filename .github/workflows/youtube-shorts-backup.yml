@@ -1,0 +1,76 @@
+name: YouTube Shorts Backup & Instagram Sync
+
+# Runs every 15 minutes. Scheduled workflows only run on the default branch.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Re-process every upload (not just new ones)"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Plan only - download and post nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Never run two syncs at the same time (they would race on the backup commit).
+concurrency:
+  group: autoshortsync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install yt-dlp
+        run: pip install --upgrade -r requirements.txt
+
+      - name: Verify Google OAuth secrets
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          missing=0
+          for name in YOUTUBE_CLIENT_ID YOUTUBE_CLIENT_SECRET YOUTUBE_REFRESH_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Add them under Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+
+      - name: Sync YouTube -> backup + Instagram
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+          BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          args=""
+          if [ "${{ inputs.backfill }}" = "true" ]; then args="$args --backfill"; fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then args="$args --dry-run"; fi
+          python scripts/youtube_sync.py $args

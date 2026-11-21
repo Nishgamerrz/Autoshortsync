@@ -1,0 +1,51 @@
+{
+  "youtube": {
+    "uploads_max_results": 50,
+    "shorts_max_seconds": 180,
+    "shorts_hashtag": "#shorts",
+    "shorts_hashtag_required": false,
+    "include_regular_videos": true,
+    "backup_comments": true,
+    "backup_subtitles": false,
+    "subtitle_langs": ["en"],
+    "download_format": "bv*[height<=1080]+ba/b[height<=1080]/b",
+    "download_merge_format": "mp4",
+    "download_retries": 3,
+    "skip_existing_downloads": true
+  },
+  "backup": {
+    "directory": "backups",
+    "commit": true,
+    "git_user_name": "AutoShortSync Bot",
+    "git_user_email": "autoshortsync@users.noreply.github.com",
+    "repo": "",
+    "branch": "",
+    "release_enable": true,
+    "release_tag": "youtube-shorts",
+    "release_name": "YouTube Shorts backup"
+  },
+  "instagram": {
+    "enabled": false,
+    "publish": false,
+    "account_id": "",
+    "access_token": "",
+    "video_url_template": "",
+    "caption_template": "{title}\n\n{description}\n\n🎬 Full video on YouTube: {url}\n{hashtags}",
+    "hashtags": [
+      "#shorts",
+      "#reels",
+      "#viral",
+      "#explore",
+      "#youtube",
+      "#ytshorts",
+      "#trending",
+      "#fyp"
+    ],
+    "hashtag_source": "config+video_tags",
+    "max_hashtags": 30,
+    "credit": "",
+    "queue_directory": "instagram_queue",
+    "post_all_videos": false,
+    "api_version": "v21.0"
+  }
+}

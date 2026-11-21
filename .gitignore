@@ -1,0 +1,13 @@
+# Secrets / local token dumps
+.env
+*.token.json
+tokens.json
+
+# Cloned backup repository (when backup.repo points to another repo)
+.autoshortsync/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
