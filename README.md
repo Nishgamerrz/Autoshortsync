@@ -76,9 +76,10 @@ workflow exchanges it for short-lived access tokens forever.
 
 1. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
 2. Application type: **Web application**.
-3. Under **Authorized redirect URIs**, add exactly:
+3. Under **Authorized redirect URIs**, add:
    ```
-   http://localhost:8080/callback
+   http://localhost:8080/callback            (for get_refresh_token.py)
+   http://localhost:8080/google/callback     (for the one-page auth server)
    ```
 4. Copy the **Client ID** and **Client secret**.
 
@@ -100,7 +101,44 @@ YOUTUBE_CLIENT_SECRET  = ...
 YOUTUBE_REFRESH_TOKEN  = ...
 ```
 
-### 1.5 Add the GitHub secrets
+**Easiest option — one-page authorization for Google *and* Instagram:**
+
+```bash
+python scripts/auth_server.py
+```
+
+Open <http://localhost:8080>, paste your Google client ID/secret and Meta app
+ID/secret, then click **Authorize Google / YouTube** and **Authorize Instagram**.
+The page prints every value to paste into GitHub Secrets — including the
+Instagram account ID and the Page access token. The raw authorization links are
+shown on the page too (also at `/links`):
+
+```
+Google : https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fgoogle%2Fcallback&scope=...&access_type=offline&prompt=consent
+Meta   : https://www.facebook.com/v21.0/dialog/oauth?client_id=...&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Finstagram%2Fcallback&scope=instagram_basic%2Cinstagram_content_publish%2Cpages_show_list%2Cpages_read_engagement
+```
+
+### 1.5 Set up the Meta / Instagram app (for auto-publish)
+
+1. Go to <https://developers.facebook.com/> → **My Apps → Create App**
+   (type "Business" or "Other").
+2. Add the **Instagram Graph API** product (and **Facebook Login** if you want
+   the clickable login flow).
+3. In **Facebook Login → Settings → Valid OAuth Redirect URIs**, add:
+   ```
+   http://localhost:8080/instagram/callback
+   ```
+4. Make sure your Instagram account is a **Business/Creator** account and is
+   linked to a **Facebook Page** (Instagram app → Settings → Account → Linked
+   accounts, or Page Settings → Instagram).
+5. Add yourself under **App Roles → Testers** (or make yourself admin) so you
+   can authorize while the app is in development mode.
+6. The token needs these permissions: `instagram_basic`,
+   `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`.
+   Meta may ask for an app review before other accounts can use it — that does
+   not affect your own account.
+
+### 1.6 Add the GitHub secrets
 
 Repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
@@ -109,6 +147,10 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `YOUTUBE_CLIENT_ID` | Client ID from 1.3 |
 | `YOUTUBE_CLIENT_SECRET` | Client secret from 1.3 |
 | `YOUTUBE_REFRESH_TOKEN` | Refresh token printed in 1.4 |
+| `INSTAGRAM_ACCOUNT_ID` | Instagram Business/Creator ID from the auth page |
+| `INSTAGRAM_ACCESS_TOKEN` | Page access token from the auth page |
+| `BACKUP_REPO` | Optional: `you/youtube-backups` |
+| `BACKUP_TOKEN` | Optional: GitHub PAT with `repo` scope |
 
 > The refresh token stays valid until you revoke access at
 > <https://myaccount.google.com/permissions>. If you ever revoke it, run 1.4
@@ -150,7 +192,12 @@ git add .gitattributes && git commit -m "Track backup videos with LFS"
 ### 3.1 Prerequisites (only needed for auto-publish)
 
 Instagram only allows automatic posting through the **Instagram Graph API**,
-which requires:
+which requires the items below. The easiest way to get the token and account ID
+is the one-page auth server from section 1.5:
+
+```bash
+python scripts/auth_server.py   # then click "Authorize Instagram"
+```
 
 - an **Instagram Professional account** (Business or Creator), not a personal one;
 - a **Facebook Page** connected to that Instagram account;
@@ -345,7 +392,7 @@ python scripts/youtube_sync.py --backfill    # re-process everything
 
 | Problem | Fix |
 | --- | --- |
-| `missing required secrets` | Add the three `YOUTUBE_*` secrets (section 1.5) |
+| `missing required secrets` | Add the three `YOUTUBE_*` secrets (section 1.6) |
 | `Token refresh failed (HTTP 400)` | Refresh token revoked or expired — re-run `get_refresh_token.py` and update the secret. If the consent screen was in Testing mode, the token expires after 7 days; set it to **In production** |
 | Redirect URI rejected in Google Cloud | Use application type **Desktop app**, or register `http://localhost:8080/callback` exactly as shown |
 | `yt-dlp is not installed` | `pip install -r requirements.txt` |
